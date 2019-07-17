@@ -24,6 +24,7 @@ func Select(urls []string, timeout time.Duration, client *http.Client) (string, 
 		go func(url string) {
 			r, err := ctxhttp.Head(ctx, client, url)
 			if err == nil {
+				defer r.Body.Close()
 				if r.StatusCode >= 200 && r.StatusCode < 400 {
 					dst <- url
 					cancel()
