@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"golang.org/x/net/context/ctxhttp"
@@ -39,4 +40,12 @@ func Select(urls []string, timeout time.Duration, client *http.Client) (string, 
 	case <-time.After(timeout):
 		return "", fmt.Errorf("Timeout")
 	}
+}
+
+func SelectURLs(urls []url.URL, timeout time.Duration, client *http.Client) (string, error) {
+	strs := make([]string, len(urls))
+	for i, u := range urls {
+		strs[i] = u.String()
+	}
+	return Select(strs, timeout, client)
 }

@@ -1,10 +1,11 @@
 package http_probe_test
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
-	"github.com/miihael/go-http-probe"
+	http_probe "github.com/miihael/go-http-probe"
 )
 
 func TestSelect(t *testing.T) {
@@ -18,4 +19,32 @@ func TestSelect(t *testing.T) {
 		t.Error(err)
 	}
 	t.Logf("selected %s", url)
+}
+
+func TestSelectURLs(t *testing.T) {
+	urls := []url.URL{
+		url.URL{Scheme: "https", Host: "debian.org"},
+		url.URL{Scheme: "https", Host: "google.com"},
+		url.URL{Scheme: "https", Host: "ubuntu.com"},
+	}
+	url, err := http_probe.SelectURLs(urls, 10*time.Second, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Logf("selected %s", url)
+}
+
+func TestSmallTimeout(t *testing.T) {
+	urls := []url.URL{
+		url.URL{Scheme: "https", Host: "debian.org"},
+		url.URL{Scheme: "https", Host: "google.com"},
+		url.URL{Scheme: "https", Host: "ubuntu.com"},
+	}
+	url, err := http_probe.SelectURLs(urls, 10*time.Millisecond, nil)
+	if err != nil {
+		t.Logf("expected error: %s", err)
+	}
+	if url != "" {
+		t.Errorf("selected %s, must be empty", url)
+	}
 }
