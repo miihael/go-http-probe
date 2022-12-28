@@ -15,7 +15,7 @@ type Probe struct {
 	Elapsed time.Duration
 }
 
-//Select the fastest URL responded OK within timeout
+// Select the fastest URL responded OK within timeout
 func Select(urls []string, timeout time.Duration, client *http.Client) (string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -48,7 +48,7 @@ func Select(urls []string, timeout time.Duration, client *http.Client) (string, 
 	}
 }
 
-//SelectURLs returns the fastest URL from URL objects responded OK within timeout
+// SelectURLs returns the fastest URL as string from URL objects responded OK within timeout
 func SelectURLs(urls []url.URL, timeout time.Duration, client *http.Client) (string, error) {
 	strs := make([]string, len(urls))
 	for i, u := range urls {
@@ -57,7 +57,50 @@ func SelectURLs(urls []url.URL, timeout time.Duration, client *http.Client) (str
 	return Select(strs, timeout, client)
 }
 
-//SelectAll returns URLs and elapsed times in order they have replied
+// SelectURLsIdx returns the index of fastest URL from URL objects responded OK within timeout or -1 if none
+func SelectURLsIdx(urls []url.URL, timeout time.Duration, client *http.Client) (int, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if client == nil {
+		client = &http.Client{
+			Timeout: timeout - 100*time.Millisecond,
+		}
+	}
+
+	dst := make(chan (int), len(urls))
+	for i, u := range urls {
+		go func(j int, ur *url.URL) {
+			req := &http.Request{
+				Method:     "HEAD",
+				URL:        ur,
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				Body:       nil,
+				Host:       ur.Host,
+			}
+			r, err := ctxhttp.Do(ctx, client, req)
+			if err == nil {
+				defer r.Body.Close()
+				if r.StatusCode >= 200 && r.StatusCode < 400 {
+					dst <- j
+					cancel()
+				}
+			}
+		}(i, &u)
+	}
+
+	select {
+	case j := <-dst:
+		return j, nil
+	case <-time.After(timeout):
+		return -1, fmt.Errorf("Timeout")
+	}
+}
+
+// SelectAll returns URLs and elapsed times in order they have replied
 func SelectAll(urls []string, timeout time.Duration, client *http.Client) ([]Probe, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -96,5 +139,4 @@ func SelectAll(urls []string, timeout time.Duration, client *http.Client) ([]Pro
 			return res, fmt.Errorf("Timeout")
 		}
 	}
-	return res, nil
 }

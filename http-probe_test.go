@@ -34,6 +34,19 @@ func TestSelectURLs(t *testing.T) {
 	t.Logf("selected %s", url)
 }
 
+func TestSelectURLsIdx(t *testing.T) {
+	urls := []url.URL{
+		url.URL{Scheme: "https", Host: "debian.org"},
+		url.URL{Scheme: "https", Host: "google.com"},
+		url.URL{Scheme: "https", Host: "ubuntu.com"},
+	}
+	j, err := http_probe.SelectURLsIdx(urls, 10*time.Second, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %#v", urls[j])
+}
+
 func TestSmallTimeout(t *testing.T) {
 	urls := []url.URL{
 		url.URL{Scheme: "https", Host: "debian.org"},
