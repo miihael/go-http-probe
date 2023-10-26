@@ -140,3 +140,47 @@ func SelectAll(urls []string, timeout time.Duration, client *http.Client) ([]Pro
 		}
 	}
 }
+
+// SelectURLsIdxWithContext returns the index of fastest URL from URL pointers responded OK within timeout or -1 if none
+func SelectURLsIdxWithContext(pctx context.Context, urls []*url.URL, timeout time.Duration, client *http.Client) (int, error) {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	if client == nil {
+		client = &http.Client{
+			Timeout: timeout - 100*time.Millisecond,
+		}
+	}
+
+	dst := make(chan (int), len(urls))
+	for i, u := range urls {
+		go func(j int, ur *url.URL) {
+			req := &http.Request{
+				Method:     "HEAD",
+				URL:        ur,
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				Body:       nil,
+				Host:       ur.Host,
+			}
+			req = req.WithContext(ctx)
+			r, err := client.Do(req)
+			if err == nil {
+				defer r.Body.Close()
+				if r.StatusCode >= 200 && r.StatusCode < 400 {
+					dst <- j
+					cancel()
+				}
+			}
+		}(i, u)
+	}
+
+	select {
+	case j := <-dst:
+		return j, nil
+	case <-time.After(timeout):
+		return -1, fmt.Errorf("Timeout")
+	}
+}

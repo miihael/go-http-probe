@@ -1,6 +1,7 @@
 package http_probe_test
 
 import (
+	"context"
 	"net/url"
 	"testing"
 	"time"
@@ -60,4 +61,20 @@ func TestSmallTimeout(t *testing.T) {
 	if url != "" {
 		t.Errorf("selected %s, must be empty", url)
 	}
+}
+
+func TestSelectURLsIdxCtx(t *testing.T) {
+	urls := []*url.URL{
+		&url.URL{Scheme: "https", Host: "debian.org"},
+		&url.URL{Scheme: "https", Host: "google.com"},
+		&url.URL{Scheme: "https", Host: "ubuntu.com"},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	tt := time.Now()
+	j, err := http_probe.SelectURLsIdxWithContext(ctx, urls, 10*time.Second, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %#v, elapsed: %s", urls[j], time.Since(tt))
 }
