@@ -64,10 +64,10 @@ func TestSmallTimeout(t *testing.T) {
 }
 
 func TestSelectURLsIdxCtx(t *testing.T) {
-	urls := []*url.URL{
-		&url.URL{Scheme: "https", Host: "debian.org"},
-		&url.URL{Scheme: "https", Host: "google.com"},
-		&url.URL{Scheme: "https", Host: "ubuntu.com"},
+	urls := []url.URL{
+		url.URL{Scheme: "https", Host: "debian.org"},
+		url.URL{Scheme: "https", Host: "google.com"},
+		url.URL{Scheme: "https", Host: "ubuntu.com"},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

@@ -141,8 +141,8 @@ func SelectAll(urls []string, timeout time.Duration, client *http.Client) ([]Pro
 	}
 }
 
-// SelectURLsIdxWithContext returns the index of fastest URL from URL pointers responded OK within timeout or -1 if none
-func SelectURLsIdxWithContext(pctx context.Context, urls []*url.URL, timeout time.Duration, client *http.Client) (int, error) {
+// SelectURLsIdxWithContext returns the index of fastest URL from URLs responded OK within timeout or -1 if none
+func SelectURLsIdxWithContext(pctx context.Context, urls []url.URL, timeout time.Duration, client *http.Client) (int, error) {
 	ctx, cancel := context.WithCancel(pctx)
 	defer cancel()
 
@@ -154,10 +154,10 @@ func SelectURLsIdxWithContext(pctx context.Context, urls []*url.URL, timeout tim
 
 	dst := make(chan (int), len(urls))
 	for i, u := range urls {
-		go func(j int, ur *url.URL) {
+		go func(j int, ur url.URL) {
 			req := &http.Request{
 				Method:     "HEAD",
-				URL:        ur,
+				URL:        &ur,
 				Proto:      "HTTP/1.1",
 				ProtoMajor: 1,
 				ProtoMinor: 1,
