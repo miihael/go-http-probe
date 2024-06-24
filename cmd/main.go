@@ -13,6 +13,9 @@ import (
 func main() {
 	fTimeout := flag.Duration("timeout", 30*time.Second, "selection timeout")
 	flag.Parse()
+	if flag.NArg() < 1 {
+		panic("no URLs provided")
+	}
 	res, err := http_probe.SelectAll(flag.Args(), *fTimeout, nil)
 	fmt.Fprintf(os.Stderr, "%d responses: error=%v\n", len(res), err)
 	j := json.NewEncoder(os.Stdout)
