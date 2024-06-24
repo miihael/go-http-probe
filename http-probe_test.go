@@ -2,7 +2,9 @@ package http_probe_test
 
 import (
 	"context"
+	"net/http"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -15,11 +17,32 @@ func TestSelect(t *testing.T) {
 		"http://google.com",
 		"http://example.com",
 	}
-	url, err := http_probe.Select(urls, 10*time.Second, nil)
+	u, err := http_probe.Select(urls, 10*time.Second, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("selected %s", url)
+	t.Logf("selected %s", u)
+}
+
+func TestSelectWithContext(t *testing.T) {
+	const stopAfter = 30
+	ctx, cancel := context.WithTimeout(context.Background(), stopAfter*time.Millisecond)
+	defer cancel()
+	urls := []string{
+		"http://debian.org",
+		"http://google.com",
+		"http://example.com",
+	}
+	tt := time.Now()
+	u, err := http_probe.SelectWithContext(ctx, urls, 1*time.Second, &http.Client{})
+	if err != nil && !os.IsTimeout(err) {
+		t.Error(err)
+	}
+	elapsed := time.Since(tt)
+	t.Logf("selected %q, elapsed %s, error %v", u, elapsed, err)
+	if elapsed.Milliseconds() > stopAfter*1.1 {
+		t.Errorf("too much time passed: %s, expected %dms", elapsed, stopAfter)
+	}
 }
 
 func TestSelectURLs(t *testing.T) {
@@ -28,11 +51,11 @@ func TestSelectURLs(t *testing.T) {
 		url.URL{Scheme: "https", Host: "google.com"},
 		url.URL{Scheme: "https", Host: "ubuntu.com"},
 	}
-	url, err := http_probe.SelectURLs(urls, 10*time.Second, nil)
+	u, err := http_probe.SelectURLs(urls, 10*time.Second, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("selected %s", url)
+	t.Logf("selected %s", u)
 }
 
 func TestSelectURLsIdx(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"golang.org/x/net/context/ctxhttp"
@@ -15,9 +16,13 @@ type Probe struct {
 	Elapsed time.Duration
 }
 
+func errTimeout() error {
+	return fmt.Errorf("probe timeout: %w", os.ErrDeadlineExceeded)
+}
+
 // Select the fastest URL responded OK within timeout
-func Select(urls []string, timeout time.Duration, client *http.Client) (string, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func SelectWithContext(pctx context.Context, urls []string, timeout time.Duration, client *http.Client) (string, error) {
+	ctx, cancel := context.WithCancel(pctx)
 	defer cancel()
 
 	if client == nil {
@@ -41,11 +46,17 @@ func Select(urls []string, timeout time.Duration, client *http.Client) (string, 
 	}
 
 	select {
+	case <-pctx.Done():
+		return "", pctx.Err()
 	case u := <-dst:
 		return u, nil
 	case <-time.After(timeout):
-		return "", fmt.Errorf("Timeout")
+		return "", errTimeout()
 	}
+}
+
+func Select(urls []string, timeout time.Duration, client *http.Client) (string, error) {
+	return SelectWithContext(context.Background(), urls, timeout, client)
 }
 
 // SelectURLs returns the fastest URL as string from URL objects responded OK within timeout
@@ -96,7 +107,7 @@ func SelectURLsIdx(urls []url.URL, timeout time.Duration, client *http.Client) (
 	case j := <-dst:
 		return j, nil
 	case <-time.After(timeout):
-		return -1, fmt.Errorf("Timeout")
+		return -1, errTimeout()
 	}
 }
 
@@ -136,7 +147,7 @@ func SelectAll(urls []string, timeout time.Duration, client *http.Client) ([]Pro
 				return res, nil
 			}
 		case <-ctx.Done():
-			return res, fmt.Errorf("Timeout")
+			return res, errTimeout()
 		}
 	}
 }
@@ -178,9 +189,11 @@ func SelectURLsIdxWithContext(pctx context.Context, urls []url.URL, timeout time
 	}
 
 	select {
+	case <-pctx.Done():
+		return -1, pctx.Err()
 	case j := <-dst:
 		return j, nil
 	case <-time.After(timeout):
-		return -1, fmt.Errorf("Timeout")
+		return -1, errTimeout()
 	}
 }
