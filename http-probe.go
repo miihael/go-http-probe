@@ -197,3 +197,53 @@ func SelectURLsIdxWithContext(pctx context.Context, urls []url.URL, timeout time
 		return -1, errTimeout()
 	}
 }
+
+// SelectURLsPtrIdxWithContext is like SelectURLsIdxWithContext but takes []*url.URL.
+// Nil entries are skipped and never selected.
+func SelectURLsPtrIdxWithContext(pctx context.Context, urls []*url.URL, timeout time.Duration, client *http.Client) (int, error) {
+	ctx, cancel := context.WithCancel(pctx)
+	defer cancel()
+
+	if client == nil {
+		client = &http.Client{
+			Timeout: timeout - 100*time.Millisecond,
+		}
+	}
+
+	dst := make(chan (int), len(urls))
+	for i, u := range urls {
+		if u == nil {
+			continue
+		}
+		go func(j int, ur *url.URL) {
+			req := &http.Request{
+				Method:     "HEAD",
+				URL:        ur,
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				Body:       nil,
+				Host:       ur.Host,
+			}
+			req = req.WithContext(ctx)
+			r, err := client.Do(req)
+			if err == nil {
+				defer r.Body.Close()
+				if r.StatusCode >= 200 && r.StatusCode < 400 {
+					dst <- j
+					cancel()
+				}
+			}
+		}(i, u)
+	}
+
+	select {
+	case <-pctx.Done():
+		return -1, pctx.Err()
+	case j := <-dst:
+		return j, nil
+	case <-time.After(timeout):
+		return -1, errTimeout()
+	}
+}

@@ -101,3 +101,24 @@ func TestSelectURLsIdxCtx(t *testing.T) {
 	}
 	t.Logf("selected %#v, elapsed: %s", urls[j], time.Since(tt))
 }
+
+func TestSelectURLsPtrIdxWithContext(t *testing.T) {
+	u0 := url.URL{Scheme: "https", Host: "debian.org"}
+	u1 := url.URL{Scheme: "https", Host: "google.com"}
+	u2 := url.URL{Scheme: "https", Host: "ubuntu.com"}
+	urls := []*url.URL{nil, &u0, &u1, &u2}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	tt := time.Now()
+	j, err := http_probe.SelectURLsPtrIdxWithContext(ctx, urls, 10*time.Second, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j < 1 || j > 3 {
+		t.Fatalf("unexpected index %d (nil at 0 must be skipped)", j)
+	}
+	if urls[j] == nil {
+		t.Fatal("selected nil URL")
+	}
+	t.Logf("selected %#v, elapsed: %s", *urls[j], time.Since(tt))
+}
